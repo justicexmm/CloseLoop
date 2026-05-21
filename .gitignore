@@ -1,0 +1,4 @@
+.env
+quotes.db
+__pycache__/
+*.pyc
