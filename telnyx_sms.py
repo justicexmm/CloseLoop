@@ -21,7 +21,7 @@ def send_sms(to_number: str, message_body: str) -> str | None:
     Phone numbers must be in E.164 format (e.g. +15551234567).
     """
     try:
-        msg = telnyx.Message.create(
+        msg = telnyx.messages.create(
             from_=TELNYX_FROM_NUMBER,
             to=to_number,
             text=message_body,
