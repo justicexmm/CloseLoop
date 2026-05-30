@@ -11,7 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 
 import quote_database as db
 from claude_message_generator import generate_follow_up_message, generate_second_follow_up_message
-from twilio_sms import send_follow_up
+from telnyx_sms import send_follow_up
 
 logger = logging.getLogger(__name__)
 
