@@ -5,14 +5,21 @@ Sends follow-up messages to prospects and alert notifications to contractors.
 
 import os
 import logging
-import telnyx
+from telnyx import Telnyx
 
 logger = logging.getLogger(__name__)
 
-telnyx.api_key = os.getenv("TELNYX_API_KEY")
-
 TELNYX_FROM_NUMBER       = os.getenv("TELNYX_FROM_NUMBER", "+16183666858")
 TELNYX_MESSAGING_PROFILE = os.getenv("TELNYX_MESSAGING_PROFILE_ID", "40019e76-5746-4a70-8cdb-fccfe5f0e4d7")
+
+_client = None
+
+
+def _get_client() -> Telnyx:
+    global _client
+    if _client is None:
+        _client = Telnyx(api_key=os.getenv("TELNYX_API_KEY"))
+    return _client
 
 
 def send_sms(to_number: str, message_body: str) -> str | None:
@@ -21,16 +28,17 @@ def send_sms(to_number: str, message_body: str) -> str | None:
     Phone numbers must be in E.164 format (e.g. +15551234567).
     """
     try:
-        msg = telnyx.messages.create(
+        resp = _get_client().messages.send(
             from_=TELNYX_FROM_NUMBER,
             to=to_number,
             text=message_body,
             messaging_profile_id=TELNYX_MESSAGING_PROFILE,
         )
-        logger.info(f"[Telnyx] SMS sent to {to_number} — ID: {msg.id}")
-        return msg.id
+        msg_id = resp.data.id
+        logger.info(f"[Telnyx] SMS sent to {to_number} — ID: {msg_id}")
+        return msg_id
     except Exception as e:
-        logger.error(f"[Telnyx] Failed to send SMS to {to_number}: {e}")
+        logger.error(f"[Telnyx] Failed to send SMS to {to_number}: {type(e).__name__}: {e}")
         return None
 
 
