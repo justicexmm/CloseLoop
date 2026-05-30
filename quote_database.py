@@ -81,6 +81,18 @@ def save_quote(quote_id, prospect_name, prospect_phone, contractor_name,
         conn.close()
 
 
+def get_all_quotes():
+    """Return every quote row regardless of status — used for debug logging."""
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT quote_id, prospect_name, status, sent_at FROM quotes ORDER BY sent_at DESC"
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
 def get_pending_quotes():
     """
     Return all quotes with status=pending.

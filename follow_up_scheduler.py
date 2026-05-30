@@ -12,6 +12,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import quote_database as db
 from claude_message_generator import generate_follow_up_message, generate_second_follow_up_message
 from telnyx_sms import send_follow_up
+from quote_database import get_all_quotes
 
 logger = logging.getLogger(__name__)
 
@@ -27,9 +28,17 @@ def check_and_send_follow_ups():
     """
     logger.info("[Scheduler] Running follow-up check...")
 
+    all_quotes = get_all_quotes()
+    if all_quotes:
+        logger.info(f"[Scheduler] DB snapshot — {len(all_quotes)} quote(s) total:")
+        for q in all_quotes:
+            logger.info(f"  quote_id={q['quote_id']}  prospect={q['prospect_name']}  status={q['status']}  sent_at={q['sent_at']}")
+    else:
+        logger.info("[Scheduler] DB snapshot — no quotes in database yet.")
+
     pending = db.get_pending_quotes()
     now = datetime.now(timezone.utc)
-    cutoff = now - timedelta(minutes=2)  # TEST MODE — change back to timedelta(hours=FOLLOW_UP_HOURS)
+    cutoff = now - timedelta(minutes=1)  # TEST MODE — change back to timedelta(hours=FOLLOW_UP_HOURS)
 
     sent_count = 0
 
@@ -43,7 +52,7 @@ def check_and_send_follow_ups():
 
             if sent_at > cutoff:
                 # Not old enough yet
-                secs_remaining = (sent_at + timedelta(minutes=2) - now).seconds  # TEST MODE
+                secs_remaining = (sent_at + timedelta(minutes=1) - now).seconds  # TEST MODE
                 logger.debug(
                     f"[Scheduler] Quote {quote['quote_id']} not ready "
                     f"(~{secs_remaining}s remaining)."
