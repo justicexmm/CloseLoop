@@ -1,5 +1,5 @@
 flask
-twilio
+telnyx
 google-genai
 apscheduler
 python-dotenv

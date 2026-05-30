@@ -2,7 +2,7 @@
 Quote Recovery Bot — main Flask application.
 Exposes two webhooks:
   POST /webhook  — receives new quote data from Zapier / Housecall Pro
-  POST /inbound  — receives inbound SMS replies forwarded by Twilio
+  POST /inbound  — receives inbound SMS replies forwarded by Telnyx
 """
 
 import os
@@ -16,7 +16,7 @@ from flask import Flask, request, jsonify
 
 import quote_database as db
 from follow_up_scheduler import start_scheduler
-from twilio_sms import notify_contractor
+from telnyx_sms import notify_contractor
 
 # ── Logging setup ─────────────────────────────────────────────────────────────
 
@@ -90,15 +90,22 @@ def receive_quote():
 @app.route("/inbound", methods=["POST"])
 def receive_inbound_sms():
     """
-    Inbound SMS webhook from Twilio.
-    Twilio sends form-encoded data; we extract From and Body.
+    Inbound SMS webhook from Telnyx.
+    Telnyx sends JSON; we pull from data.payload.from.phone_number and data.payload.text.
     Logs the reply and fires a notification to the contractor.
     """
-    from_number  = request.form.get("From", "").strip()
-    message_body = request.form.get("Body", "").strip()
+    body = request.get_json(force=True, silent=True) or {}
+
+    try:
+        payload     = body["data"]["payload"]
+        from_number = payload["from"]["phone_number"].strip()
+        message_body = payload["text"].strip()
+    except (KeyError, TypeError):
+        logger.warning(f"[/inbound] Unexpected Telnyx payload shape: {body}")
+        return ("", 204)
 
     if not from_number or not message_body:
-        logger.warning("[/inbound] Empty From or Body — ignoring.")
+        logger.warning("[/inbound] Empty from or text — ignoring.")
         return ("", 204)
 
     logger.info(f"[/inbound] SMS from {from_number}: {message_body!r}")
@@ -108,7 +115,6 @@ def receive_inbound_sms():
 
     if not quote:
         logger.warning(f"[/inbound] No quote found for {from_number} — reply unmatched.")
-        # Still return 200 so Twilio doesn't retry
         return ("", 200)
 
     quote_id         = quote["quote_id"]
@@ -126,9 +132,8 @@ def receive_inbound_sms():
         f"contractor {contractor_phone} notified."
     )
 
-    # Return empty TwiML — no auto-reply to prospect
-    return ('<?xml version="1.0" encoding="UTF-8"?><Response></Response>', 200,
-            {"Content-Type": "text/xml"})
+    # Telnyx expects a plain 200 — no TwiML needed
+    return ("", 200)
 
 
 # ── Health check ──────────────────────────────────────────────────────────────

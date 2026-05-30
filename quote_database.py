@@ -96,10 +96,26 @@ def get_pending_quotes():
         conn.close()
 
 
+def get_followed_up_quotes():
+    """
+    Return all quotes with status=followed_up.
+    The scheduler filters these by follow_up_sent_at age to find ones
+    ready for the second follow-up.
+    """
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            "SELECT * FROM quotes WHERE status = 'followed_up'"
+        ).fetchall()
+        return [dict(row) for row in rows]
+    finally:
+        conn.close()
+
+
 def update_quote_status(quote_id, new_status):
     """
     Update the status field for a given quote.
-    Valid statuses: pending, followed_up, closed, cancelled.
+    Valid statuses: pending, followed_up, followed_up_2, closed, cancelled.
     Also stamps follow_up_sent_at when transitioning to followed_up.
     """
     conn = get_connection()
